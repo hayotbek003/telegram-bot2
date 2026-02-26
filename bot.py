@@ -329,7 +329,7 @@ def menu(uid):
     kb.add("💰 Tanga ishlash", "🛒 Do'kon")
     kb.add("💳 Balans")
     kb.add("📝 Vazifalar")
-    kb.add("⭐ Предсказание")  # ← НОВАЯ КНОПКА
+    kb.add("⭐ Sapyor")  # ← НОВАЯ КНОПКА
     if is_admin(uid):
         kb.add("👑 Admin panel")
     bot.send_message(uid, "🏠 Asosiy menyu", reply_markup=kb)
@@ -1310,11 +1310,11 @@ def admin_promos(m):
 # ⭐ ПРЕДСКАЗАНИЕ 26 КЛЕТОК (НОВАЯ ФУНКЦИЯ)
 # ===============================
 
-@bot.message_handler(func=lambda m: m.text == "⭐ Предсказание")
+@bot.message_handler(func=lambda m: m.text == "⭐ Sapyor")
 @require_subscription
 def prediction_menu(m):
     kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton("3 звезды (3 монеты)", callback_data="stars3"))
+    kb.add(types.InlineKeyboardButton("3 звезды (2 монеты)", callback_data="stars3"))
     bot.send_message(m.chat.id, "Выбери режим:", reply_markup=kb)
 
 
@@ -1327,12 +1327,12 @@ def show_stars_prediction(c):
     res = db_query("SELECT coins FROM users WHERE user_id=?", (uid,), fetchone=True)
     coins = res[0] if res else 0
 
-    if coins < 3:
-        bot.answer_callback_query(c.id, "❌ Нужно 3 монеты", show_alert=True)
+    if coins < 2:
+        bot.answer_callback_query(c.id, "❌ Нужно 2 монеты", show_alert=True)
         return
 
     # Списываем монеты
-    db_query("UPDATE users SET coins = coins - 3 WHERE user_id=?", (uid,), commit=True)
+    db_query("UPDATE users SET coins = coins - 2 WHERE user_id=?", (uid,), commit=True)
 
     # 26 клеток
     cells = list(range(1, 27))
