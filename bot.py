@@ -6,7 +6,7 @@ import base64
 import logging
 import time
 import os
-import random
+import random  # 🔥 ДОБАВЛЕНО (пункт 1)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
 
@@ -16,8 +16,9 @@ last_prompt = {}
 PHOTOS_FOLDER = "case_photos"
 os.makedirs(PHOTOS_FOLDER, exist_ok=True)
 
-TOKEN = "8534666186:AAEGAbCnBiGV5CDmByKsyEL3frWoFLZ_n4I"
-ADMINS = [5911280005, 7388508151]
+TOKEN = "8405295595:AAGOgilQZUHdfiIZqtk5blog9gl68BwWXfc"
+ADMINS = [5911280005]
+
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -76,6 +77,7 @@ def send_photo_from_file(chat_id, photo_filename, caption=None, **kwargs):
 
     if not os.path.exists(photo_path):
         logging.error(f"Rasm topilmadi: {photo_path}")
+        # Agar rasm bo'lmasa, oddiy matn yuborish
         if caption:
             bot.send_message(chat_id, caption, **kwargs)
         return False
@@ -86,6 +88,7 @@ def send_photo_from_file(chat_id, photo_filename, caption=None, **kwargs):
         return True
     except Exception as e:
         logging.error(f"Rasm {photo_filename} ni yuborishda xatolik: {e}")
+        # Xato bo'lsa, oddiy matn yuborish
         if caption:
             bot.send_message(chat_id, caption, **kwargs)
         return False
@@ -314,18 +317,19 @@ def prompt_subscription(uid, text=None):
 
     kb.add(types.InlineKeyboardButton("✅ Men obuna bo'ldim", callback_data="check"))
 
-    msg = text or "❗ Avval obuna bo'ling: iltimos, barcha sponsor kanallariga obuna bo'ling va keyin tasdiqlang"
+    msg = text or "❗ Avval obuna bo'ling: iltimos, barcha sponsorkanallariga obuna bo'ling va keyin tasdiqlang"
     try:
         bot.send_message(uid, msg, reply_markup=kb)
     except Exception as e:
         logging.exception("Obuna taklifini yuborishda xatolik")
 
+# 🔥 ФУНКЦИЯ MENU ЗАМЕНЕНА (пункт 2)
 def menu(uid):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("💰 Tanga ishlash", "🛒 Do'kon")
     kb.add("💳 Balans")
     kb.add("📝 Vazifalar")
-    kb.add("⭐ Sapyor", "💥 Crash")
+    kb.add("⭐ Предсказание")  # ← НОВАЯ КНОПКА
     if is_admin(uid):
         kb.add("👑 Admin panel")
     bot.send_message(uid, "🏠 Asosiy menyu", reply_markup=kb)
@@ -349,8 +353,10 @@ def recheck(c):
 
 @bot.message_handler(commands=["start", "menu"])
 def cmd_start(m):
+    # FSM ni sbros qilish
     admin_state.pop(m.from_user.id, None)
 
+    # Referal havolani tekshirish
     if len(m.text.split()) > 1:
         try:
             ref_id = int(m.text.split()[1])
@@ -407,6 +413,7 @@ def balance(m):
         f"👥 Do'stlaringiz soni: {friends}"
     )
 
+    # Balans rasmini fayldan yuborish
     send_photo_from_file(
         m.chat.id,
         "balance.jpg",
@@ -427,6 +434,7 @@ def shop(m):
     for p in [4, 7, 10, 15, 23, 35]:
         kb.add(types.InlineKeyboardButton(f"{p} tanga", callback_data=f"cat_{p}"))
 
+    # Do'kon rasmini fayldan yuborish
     send_photo_from_file(
         m.chat.id,
         "shop_categories.jpg",
@@ -498,6 +506,7 @@ def back_to_cats(c):
                 reply_markup=kb
             )
         except Exception:
+            # Kategoriya rasmini yuborish
             send_photo_from_file(
                 c.message.chat.id,
                 "shop_categories.jpg",
@@ -538,17 +547,20 @@ def buy_case(c):
         bot.answer_callback_query(c.id, "❌ Promokodlar tugadi")
         return
 
+    # Tangalarni hisobdan o'chirish
     db_query(
         "UPDATE users SET coins = coins - ? WHERE user_id=?",
         (case["price"], uid),
         commit=True
     )
 
+    # Promokodni o'chirish
     remove_promocode_by_id(promo[0])
 
     photo_filename = case.get("photo", "")
     promo_code = promo[1]
 
+    # Keys rasmini fayldan yuborish
     send_photo_from_file(
         uid,
         photo_filename,
@@ -858,6 +870,7 @@ def handle_photo(m):
     case_id = s.get("case_id")
 
     if not case_id:
+        # Umumiy rasmlar (balans, do'kon)
         if s.get("photo_type") == "balance":
             filename = "balance.jpg"
         elif s.get("photo_type") == "shop":
@@ -865,6 +878,7 @@ def handle_photo(m):
         else:
             return
     else:
+        # Keys rasmi
         case = next((x for x in CASES if x["id"] == case_id), None)
         if not case:
             return
@@ -872,21 +886,26 @@ def handle_photo(m):
 
     try:
         if m.photo:
+            # Agar rasm sifatida yuborilgan bo'lsa
             file_info = bot.get_file(m.photo[-1].file_id)
         elif m.document:
+            # Agar hujjat sifatida yuborilgan bo'lsa
             file_info = bot.get_file(m.document.file_id)
         else:
             bot.send_message(m.chat.id, "❌ Iltimos, rasm yoki hujjat yuboring.")
             return
 
+        # Faylni yuklab olish
         downloaded_file = bot.download_file(file_info.file_path)
 
+        # Papkaga saqlash
         file_path = os.path.join(PHOTOS_FOLDER, filename)
         with open(file_path, 'wb') as new_file:
             new_file.write(downloaded_file)
 
         bot.send_message(m.chat.id, f"✅ Rasm saqlandi: {filename}")
 
+        # Holatni tozalash
         del admin_state[m.from_user.id]
 
     except Exception as e:
@@ -1167,6 +1186,7 @@ def cmd_check_photos(m):
     missing_files = []
     existing_files = []
 
+    # Asosiy fayllarni tekshirish
     main_files = ["balance.jpg", "shop_categories.jpg"]
     for filename in main_files:
         path = get_photo_path(filename)
@@ -1175,6 +1195,7 @@ def cmd_check_photos(m):
         else:
             missing_files.append(f"❌ {filename}")
 
+    # Keys fayllarini tekshirish
     for case in CASES:
         path = get_photo_path(case["photo"])
         if os.path.exists(path):
@@ -1285,29 +1306,38 @@ def admin_promos(m):
 
     bot.send_message(m.chat.id, "📦 Promokodlar:\n" + "\n".join(text_lines))
 
-# ⭐ Sapyor - 26 katak o'yini
-@bot.message_handler(func=lambda m: m.text == "⭐ Sapyor")
+# ===============================
+# ⭐ ПРЕДСКАЗАНИЕ 26 КЛЕТОК (НОВАЯ ФУНКЦИЯ)
+# ===============================
+
+@bot.message_handler(func=lambda m: m.text == "⭐ Предсказание")
 @require_subscription
 def prediction_menu(m):
     kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton("⭐ 3 yulduz (3 tanga)", callback_data="stars3"))
-    bot.send_message(m.chat.id, "Rejimni tanlang:", reply_markup=kb)
+    kb.add(types.InlineKeyboardButton("3 звезды (3 монеты)", callback_data="stars3"))
+    bot.send_message(m.chat.id, "Выбери режим:", reply_markup=kb)
+
 
 @bot.callback_query_handler(func=lambda c: c.data == "stars3")
 @require_subscription_callback
 def show_stars_prediction(c):
     uid = c.from_user.id
 
+    # Проверяем монеты
     res = db_query("SELECT coins FROM users WHERE user_id=?", (uid,), fetchone=True)
     coins = res[0] if res else 0
 
     if coins < 3:
-        bot.answer_callback_query(c.id, "❌ 3 tanga kerak", show_alert=True)
+        bot.answer_callback_query(c.id, "❌ Нужно 3 монеты", show_alert=True)
         return
 
+    # Списываем монеты
     db_query("UPDATE users SET coins = coins - 3 WHERE user_id=?", (uid,), commit=True)
 
+    # 26 клеток
     cells = list(range(1, 27))
+
+    # 3 случайные звезды
     star_cells = random.sample(cells, 3)
 
     kb = types.InlineKeyboardMarkup(row_width=5)
@@ -1318,35 +1348,12 @@ def show_stars_prediction(c):
             text = "⭐"
         else:
             text = "⬜"
+
         buttons.append(types.InlineKeyboardButton(text, callback_data="none"))
 
     kb.add(*buttons)
 
-    bot.send_message(uid, "⭐ Mana 3 ta xavfsiz katak:", reply_markup=kb)
+    bot.send_message(uid, "⭐ Вот 3 безопасные клетки:", reply_markup=kb)
 
-# 💥 Crash prognozi
-@bot.message_handler(func=lambda m: m.text == "💥 Crash")
-@require_subscription
-def crash_prediction(m):
-    uid = m.from_user.id
-
-    res = db_query("SELECT coins FROM users WHERE user_id=?", (uid,), fetchone=True)
-    coins = res[0] if res else 0
-
-    if coins < 2:
-        bot.send_message(uid, "❌ Kamida 2 tanga kerak")
-        return
-
-    db_query("UPDATE users SET coins = coins - 2 WHERE user_id=?", (uid,), commit=True)
-
-    crash_value = round(random.uniform(1.05, 2.55), 2)
-
-    bot.send_message(
-        uid,
-        f"💥 CRASH PROGNOZI\n\n"
-        f"🚀 Bugungi o'sish:\n\n"
-        f"🔥 {crash_value}x"
-    )
-
-# Botni ishga tushirish
+# Запуск бота
 bot.infinity_polling(skip_pending=True)
